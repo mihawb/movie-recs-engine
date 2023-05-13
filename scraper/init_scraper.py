@@ -3,6 +3,7 @@ import numpy as np
 import requests
 from os import environ
 from optparse import OptionParser
+from itertools import product
 
 
 try:
@@ -17,27 +18,27 @@ BASE_URL = 'https://api.themoviedb.org/3'
 PAGES_LIMIT =  500
 
 
-def get_genres(save_to_csv: bool=False, filename: str='genres_list.csv') -> dict:
+def get_genres(save_to_csv: bool=False, out_filename: str='../data/genres_list.csv') -> dict:
 	'''
 	Get genre list or save in to flat file
 	'''
 	params = {'api_key': TMDB_KEY}
-	genres = requests.get(f'{BASE_URL}/genre/movie/list', params=params).json()
-	genres = dict([(pair['id'], pair['name']) for pair in genres['genres']])
+	genres = requests.get(f'{BASE_URL}/genre/movie/list', params=params).json()['genres']
+	genres = dict([(pair['id'], pair['name']) for pair in genres])
 
 	if save_to_csv:
-		pd.DataFrame({'id': genres.keys(), 'name': genres.values()}).to_csv(filename, sep=',', index=False)
+		pd.DataFrame({'id': genres.keys(), 'name': genres.values()}).to_csv(out_filename, sep=',', index=False)
 	return genres
 
 
-def get_movies(filename: str='movies.csv', quiet: bool=False) -> None:
+def get_movies(out_filename: str='../data/movies.csv', quiet: bool=False) -> None:
 	'''
 	Save top rated movies from TMDB to flat file
 	'''
 	genres = get_genres()
 
 	try:
-		movies_df = pd.read_csv(filename)
+		movies_df = pd.read_csv(out_filename)
 	except FileNotFoundError:
 		# DF truth value is ambiguous, stub DF for .empty prop
 		movies_df = pd.DataFrame(columns=('id',), dtype=np.int64)
@@ -58,29 +59,75 @@ def get_movies(filename: str='movies.csv', quiet: bool=False) -> None:
 			movies_df = pd.DataFrame(all_info)
 		else:
 			movies_df = pd.concat((movies_df, pd.DataFrame(all_info)))
-		movies_df.to_csv(filename, sep=',', index=False)
+		movies_df.to_csv(out_filename, sep=',', index=False)
 
 		if not quiet:
 			print(f'{page_no} pages scraped, {movies_df.shape[0]} movies saved')
 
 
+def get_stars(in_filename: str='../data/movies.csv', out_filename: str='../data/casts.csv', quiet: bool=False) -> None:
+
+	def get_cast(movie_id: int, accumulator: dict, quiet: bool=False) -> list[int]:
+		params = {'api_key': TMDB_KEY}
+		cast = requests.get(f'{BASE_URL}/movie/{movie_id}/credits', params=params).json()['cast'][:7]
+
+		for a in filter(lambda a: a['id'] not in accumulator.keys(), cast):
+			accumulator[a['id']] = a
+
+		if not quiet: print(f'Movie with ID={movie_id} processed')
+		return [a['id'] for a in cast]
+	
+	try:
+		split = out_filename.index('.')
+	except ValueError:
+		split = -1
+	out_filename2 = out_filename[:split] + '_stars' + out_filename[split+1:]
+
+	accumulator = dict()
+	movies_df = pd.read_csv(in_filename, usecols=('id', 'title'))
+	movies_df = movies_df.id.apply(lambda id: get_cast(id, accumulator, quiet=quiet))
+	movies_df.to_csv(out_filename, sep=',', index=False)
+
+	stars = dict()
+	for key in list(accumulator.values())[0].keys():
+		stars[key] = [s[key] for s in accumulator.values()]
+	pd.DataFrame(stars).to_csv(out_filename2, sep=',', index=False)
+
+
 if __name__ == '__main__':
 	parser = OptionParser()
-	parser.add_option('-m', '--movies',
-		   							action="store_true",
-										dest='run_get_movies',
+	parser.add_option('-a', '--auto',
+										action="store_true",
+		   							dest='auto',
 										default=False,
-										help='Movie scraping mode, saves to flat file'
+										help='Run all modes in a sequence automatically'
 	)
 	parser.add_option('-g', '--genres',
 										action="store_true",
 		   							dest='run_get_genres',
 										default=False,
-										help='Genre scraping mode, saves to flat file'
+										help='Genres scraping mode, saves to flat file'
 	)
-	parser.add_option('-f', '--filename',
+	parser.add_option('-m', '--movies',
+		   							action="store_true",
+										dest='run_get_movies',
+										default=False,
+										help='Movies scraping mode, saves to flat file'
+	)
+	parser.add_option('-s', '--stars',
+										action="store_true",
+		   							dest='run_get_stars',
+										default=False,
+										help='Stars scraping mode, saves to flat file'
+	)
+	parser.add_option('-i', '--in-filename',
 		   							action='store',
-										dest='filename',
+										dest='in_filename',
+										help='Flat file to be read from'
+	)	
+	parser.add_option('-o', '--out-filename',
+		   							action='store',
+										dest='out_filename',
 										help='Flat file to be written to'
 	)	
 	parser.add_option('-q', '--quiet',
@@ -92,13 +139,28 @@ if __name__ == '__main__':
 
 	options, _ = parser.parse_args()
 
-	if options.run_get_movies and options.run_get_genres:
+	if options.auto:
+		get_genres(save_to_csv=True)
+		get_movies(quiet=options.quiet)
+		get_stars(quiet=options.quiet)
+
+	elif any(product((options.run_get_genres, options.run_get_movies, options.run_get_stars))):
 		print('Modes cannot be run at once')
 
 	elif options.run_get_movies:
-		if options.filename: get_movies(filename=options.filename, quiet=options.quiet)
+		if options.out_filename: get_movies(out_filename=options.out_filename, quiet=options.quiet)
 		else: get_movies(quiet=options.quiet)
 
 	elif options.run_get_genres:
-		if options.filename: get_genres(save_to_csv=True, filename=options.filename)
+		if options.out_filename: get_genres(save_to_csv=True, out_filename=options.out_filename)
 		else: get_genres(save_to_csv=True)
+
+	elif options.run_get_stars:
+		if options.out_filename and options.in_filename:
+			get_stars(in_filename=options.in_filename, out_filename=options.out_filename, quiet=options.quiet)
+		elif options.out_filename:
+			get_stars(out_filename=options.out_filename, quiet=options.quiet)
+		elif options.in_filename:
+			get_stars(in_filename=options.in_filename, quiet=options.quiet)
+		else:
+			get_stars(quiet=options.quiet)
