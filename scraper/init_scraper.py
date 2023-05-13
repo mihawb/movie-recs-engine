@@ -16,6 +16,7 @@ except KeyError:
 
 BASE_URL = 'https://api.themoviedb.org/3'
 PAGES_LIMIT =  500
+STARS_PER_MOVIE = 7
 
 
 def get_genres(save_to_csv: bool=False, out_filename: str='../data/genres_list.csv') -> dict:
@@ -69,23 +70,21 @@ def get_stars(in_filename: str='../data/movies.csv', out_filename: str='../data/
 
 	def get_cast(movie_id: int, accumulator: dict, quiet: bool=False) -> list[int]:
 		params = {'api_key': TMDB_KEY}
-		cast = requests.get(f'{BASE_URL}/movie/{movie_id}/credits', params=params).json()['cast'][:7]
+		cast = requests.get(f'{BASE_URL}/movie/{movie_id}/credits', params=params).json()['cast'][:STARS_PER_MOVIE]
 
 		for a in filter(lambda a: a['id'] not in accumulator.keys(), cast):
 			accumulator[a['id']] = a
 
-		if not quiet: print(f'Movie with ID={movie_id} processed')
+		if not quiet: print(f'Movie with ID={movie_id} processed ({len(accumulator.keys())} stars accumulated)')
 		return [a['id'] for a in cast]
 	
-	try:
-		split = out_filename.index('.')
-	except ValueError:
-		split = -1
-	out_filename2 = out_filename[:split] + '_stars' + out_filename[split+1:]
+	split = out_filename.rfind('.')
+	if split == -1: out_filename2 = out_filename + '_stars'
+	else: out_filename2 = out_filename[:split] + '_stars' + out_filename[split:]
 
 	accumulator = dict()
 	movies_df = pd.read_csv(in_filename, usecols=('id', 'title'))
-	movies_df = movies_df.id.apply(lambda id: get_cast(id, accumulator, quiet=quiet))
+	movies_df['cast'] = movies_df.id.apply(lambda id: get_cast(id, accumulator, quiet=quiet))
 	movies_df.to_csv(out_filename, sep=',', index=False)
 
 	stars = dict()
@@ -144,7 +143,7 @@ if __name__ == '__main__':
 		get_movies(quiet=options.quiet)
 		get_stars(quiet=options.quiet)
 
-	elif any(product((options.run_get_genres, options.run_get_movies, options.run_get_stars))):
+	elif 1 < sum([x and y for (x,y) in product((options.run_get_genres, options.run_get_movies, options.run_get_stars), repeat=2)]):
 		print('Modes cannot be run at once')
 
 	elif options.run_get_movies:
