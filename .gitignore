@@ -2,3 +2,6 @@
 */__pycache__
 data/*
 !data/.gitkeep
+!data/plots/.gitkeep
+*.txt
+.idea

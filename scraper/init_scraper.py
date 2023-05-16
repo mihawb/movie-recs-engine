@@ -15,7 +15,7 @@ except KeyError:
 	exit()
 
 BASE_URL = 'https://api.themoviedb.org/3'
-PAGES_LIMIT =  500
+PAGES_LIMIT = 500
 STARS_PER_MOVIE = 7
 
 
