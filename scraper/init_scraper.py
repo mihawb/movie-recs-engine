@@ -4,7 +4,7 @@ import requests
 from os import environ
 from optparse import OptionParser
 from itertools import product
-
+from plot_scraper import get_plots
 
 try:
 	TMDB_KEY = environ['TMDB_KEY']
@@ -119,6 +119,12 @@ if __name__ == '__main__':
 										default=False,
 										help='Stars scraping mode, saves to flat file'
 	)
+	parser.add_option('-p', '--plots',
+										action="store_true",
+		   							dest='run_get_plots',
+										default=False,
+										help='Plots scraping mode, saves to flat file and then fetches plots to <tmdb_id>.txt files'
+	)
 	parser.add_option('-i', '--in-filename',
 		   							action='store',
 										dest='in_filename',
@@ -142,6 +148,7 @@ if __name__ == '__main__':
 		get_genres(save_to_csv=True)
 		get_movies(quiet=options.quiet)
 		get_stars(quiet=options.quiet)
+		get_plots(quiet=options.quiet)
 
 	elif 1 < sum([x and y for (x,y) in product((options.run_get_genres, options.run_get_movies, options.run_get_stars), repeat=2)]):
 		print('Modes cannot be run at once')
@@ -163,3 +170,13 @@ if __name__ == '__main__':
 			get_stars(in_filename=options.in_filename, quiet=options.quiet)
 		else:
 			get_stars(quiet=options.quiet)
+
+	elif options.run_get_plots:
+		if options.out_filename and options.in_filename:
+			get_plots(in_filename=options.in_filename, out_filename=options.out_filename, quiet=options.quiet)
+		elif options.out_filename:
+			get_plots(out_filename=options.out_filename, quiet=options.quiet)
+		elif options.in_filename:
+			get_plots(in_filename=options.in_filename, quiet=options.quiet)
+		else:
+			get_plots(quiet=options.quiet)

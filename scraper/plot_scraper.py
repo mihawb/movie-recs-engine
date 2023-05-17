@@ -1,79 +1,114 @@
-import sys
+import multiprocessing
 
-from imdb import Cinemagoer
-import pandas as pd
 import numpy as np
+import pandas as pd
 import requests
+from imdb import Cinemagoer
 from os import environ, path
-from re import sub
+from sys import stderr
+import logging
+import traceback
 
 
 try:
-	TMDB_KEY = environ['TMDB_KEY']
+    TMDB_KEY = environ['TMDB_KEY']
 except KeyError:
-	print('Environment variable "TMDB_KEY" not found, try:')
-	print('\t$ENV:TMDB_KEY="YOUR_VALUE"\ton Windows')
-	print('\texport TMDB_KEY=YOUR_VALUE\ton Linux')
-	exit()
+    print('Environment variable "TMDB_KEY" not found, try:')
+    print('\t$ENV:TMDB_KEY="YOUR_VALUE"\ton Windows')
+    print('\texport TMDB_KEY=YOUR_VALUE\ton Linux')
+    exit()
 BASE_URL = 'https://api.themoviedb.org/3'
 
+global_silence = False
 
-def word_count(text: str):
-	return len(text.split())
+def get_imdb_id(tmdb_id: int) -> str:
+    params = {'api_key': TMDB_KEY}
+    imdb_id = requests.get(f'{BASE_URL}/movie/{tmdb_id}/external_ids', params=params).json()['imdb_id']
+    imdb_id = -1 if imdb_id is None else imdb_id[2:]
+    if not global_silence: print(f'{tmdb_id} -> {imdb_id}')
+    return imdb_id
 
 
-def get_plot_filename(tmdb_id: str):
-	return f'{tmdb_id}.txt'
+def fetch_imdb_ids(in_filename: str, out_filename: str) -> pd.DataFrame:
+    movies = None
+    try:
+        movies = pd.read_csv(out_filename)
+        print(f"File `{out_filename}` already exists so fetching data is omitted")
+    except FileNotFoundError:
+        try:
+            movies = pd.read_csv(in_filename, usecols=['id', 'overview'])
+            with multiprocessing.Pool() as pool:
+                movies['imdb_id'] = pool.map(get_imdb_id, movies.id)
+
+            movies.to_csv(out_filename, sep=',', index=False)
+            print(f"Successfully created {out_filename}")
+        except FileNotFoundError:
+            print("Provide valid file with movies", file=stderr)
+        except Exception as e:
+            logging.error(traceback.format_exc())
+            movies = None
+    finally:
+        return movies
 
 
-def get_imdb_id(tmdb_id: int, quiet: bool=False) -> str:
-	params = {'api_key': TMDB_KEY}
-	imdb_id = requests.get(f'{BASE_URL}/movie/{tmdb_id}/external_ids', params=params).json()['imdb_id'][2:]
-	if not quiet: print(f'{tmdb_id} -> {imdb_id}')
-	return imdb_id
+def word_count(text: str) -> int:
+    return len(text.split())
 
-quiet = False
 
-if __name__ == '__main__':
+def get_plot_filename(tmdb_id: str) -> str:
+    return f'{tmdb_id}.txt'
 
-	try:
-		movies = pd.read_csv('../data/plots.csv')
-		print("File `plots_scraped.csv` already exists so fetching data is omitted")
-	except FileNotFoundError:
-		try:
-			movies = pd.read_csv('../data/movies.csv', usecols=['id']).head(5)
-			movies['imdb_id'] = movies.id.apply(get_imdb_id)
-			movies.to_csv('../data/plots.csv', sep=',', index=False)
-		except FileNotFoundError:
-			print("Use `init_scraper.py` script first to generate `movies.csv` file", file=sys.stderr)
-			sys.exit(1)
 
-	cg = Cinemagoer()
+def get_longest_plot(cg_movie: pd.DataFrame) -> str:
+    if cg_movie.get('synopsis', False):
+        plot = max(cg_movie['synopsis'], key=word_count)
+    elif cg_movie.get('plot', False):
+        plot = max(cg_movie['plot'], key=word_count)
+    else:
+        plot = cg_movie['plot outline']
+    return plot
 
-	for row in movies.itertuples(index=False):
 
-		plot_path = f'../data/plots/{get_plot_filename(row[0])}'
+def save_plot_to_file(row: tuple) -> bool:
+    i, tmdb_id, tmdb_plot, imdb_id = row
 
-		if path.isfile(plot_path):
-			continue
+    cg = Cinemagoer()
+    filename = get_plot_filename(tmdb_id)
+    plot_path = f'../data/plots/{filename}'
 
-		cg_movie = cg.get_movie(row[1])
+    # skip if plot already fetched and saved
+    if path.isfile(plot_path):
+        return True
 
-		plot = ""
-		if cg_movie.get('synopsis', False):
-			plot = max(cg_movie['synopsis'], key=word_count)
-		elif cg_movie.get('plot', False):
-			plot = max(cg_movie['plot'], key=word_count)
-		else:
-			plot = cg_movie['plot outline']
+    plot = tmdb_plot if imdb_id == -1 else get_longest_plot(cg.get_movie(imdb_id))
 
-		try:
-			f = open(plot_path, 'w')
-			f.write(plot)
-		except IOError:
-			print(f"Unable to create file {plot_path}", file=sys.stderr)
-			f.close()
-			sys.exit(1)
-		finally:
-			if not quiet: print(f'Saved {get_plot_filename(row[0])}')
-			f.close()
+    try:
+        f = open(plot_path, 'w', encoding='utf-8')
+        f.write(plot)
+        if not global_silence: print(f'Saved plot nr {i} into {filename}')
+        f.close()
+        return True
+    except Exception:
+        print(f"Unable to create file {plot_path} for plot nr {i} , skipping", file=stderr)
+        f.close()
+        return False
+
+
+# returns True when all plot files are set up; if not, call this method once again
+def get_plots(in_filename: str = '../data/movies.csv', out_filename: str = '../data/plots.csv',
+              quiet: bool = False) -> bool:
+
+    global global_silence
+    global_silence = quiet
+
+    movies = fetch_imdb_ids(in_filename, out_filename)
+    if movies is None:
+        return False
+
+    with multiprocessing.Pool() as pool:
+        results = pool.map(save_plot_to_file, movies.itertuples(name=None))
+
+    plot_scrapping_result = np.all(results)
+    print(f'Success status of plot scrapper: {plot_scrapping_result}')
+
+    return plot_scrapping_result
