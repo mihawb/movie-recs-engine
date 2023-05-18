@@ -1,3 +1,4 @@
+import math
 import multiprocessing
 
 import numpy as np
@@ -63,15 +64,15 @@ class PlotScraper:
         if path.isfile(plot_path):
             return True
 
-        plot = tmdb_plot if imdb_id == -1 else get_longest_plot(cg.get_movie(imdb_id))
         try:
+            plot = tmdb_plot if imdb_id == -1 or math.isnan(imdb_id) else get_longest_plot(cg.get_movie(imdb_id), tmdb_plot)
             f = open(plot_path, 'w', encoding='utf-8')
             f.write(plot)
             if not self.quiet: print(f'Saved plot nr {i} into {filename}')
             f.close()
             return True
         except Exception:
-            print(f"Unable to create file {plot_path} for plot nr {i} , skipping", file=stderr)
+            print(f"Unable to create {tmdb_id} for plot nr {i} with id {imdb_id}, skipping", file=stderr)
             f.close()
             return False
 
@@ -103,11 +104,12 @@ def get_plot_filename(tmdb_id: str) -> str:
     return f'{tmdb_id}.txt'
 
 
-def get_longest_plot(cg_movie: pd.DataFrame) -> str:
+def get_longest_plot(cg_movie: pd.DataFrame, alternative_plot: str) -> str:
     if cg_movie.get('synopsis', False):
-        plot = max(cg_movie['synopsis'], key=word_count)
+        return max(cg_movie['synopsis'], key=word_count)
     elif cg_movie.get('plot', False):
-        plot = max(cg_movie['plot'], key=word_count)
+        return max(cg_movie['plot'], key=word_count)
+    elif cg_movie.get('plot outline', False):
+        return cg_movie['plot outline']
     else:
-        plot = cg_movie['plot outline']
-    return plot
+        return alternative_plot
