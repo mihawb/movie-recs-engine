@@ -65,6 +65,15 @@ def get_movies(out_filename: str='../data/movies.csv', quiet: bool=False) -> Non
 		if not quiet:
 			print(f'{page_no} pages scraped, {movies_df.shape[0]} movies saved')
 
+	# some cleaning 
+	movies_df = movies_df.fillna('not found')
+	movies_df.original_title = movies_df.original_title.apply(lambda t: t.replace("'", "’"))
+	movies_df.title = movies_df.title.apply(lambda t: t.replace("'", "’"))
+	movies_df.original_title = movies_df.original_title.apply(lambda t: t.replace("$", "s"))
+	movies_df.title = movies_df.title.apply(lambda t: t.replace("$", "s"))
+
+	movies_df.to_csv(out_filename, sep=',', index=False)
+
 
 def get_stars(in_filename: str='../data/movies.csv', out_filename: str='../data/casts.csv', quiet: bool=False) -> None:
 
@@ -90,7 +99,16 @@ def get_stars(in_filename: str='../data/movies.csv', out_filename: str='../data/
 	stars = dict()
 	for key in list(accumulator.values())[0].keys():
 		stars[key] = [s[key] for s in accumulator.values()]
-	pd.DataFrame(stars).to_csv(out_filename2, sep=',', index=False)
+
+	#some cleaning
+	stars_df = pd.DataFrame(stars)
+	stars_df = stars_df.fillna('not found')
+	stars_df.name = stars_df.name.apply(lambda t: t.replace("$", "s"))
+	stars_df.original_name = stars_df.original_name.apply(lambda t: t.replace("$", "s"))
+	for prop in ['character', 'known_for_department', 'cast_id', 'credit_id', 'order']:
+		stars_df = stars_df.drop(prop, axis=1)
+
+	stars_df.to_csv(out_filename2, sep=',', index=False)
 
 
 if __name__ == '__main__':
