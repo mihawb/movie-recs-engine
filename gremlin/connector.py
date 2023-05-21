@@ -59,6 +59,16 @@ def _drop_vertices_with_label(client, label: str):
 			print_status_attributes(callback.result())
 
 
+def _drop_edge(client, in_vertex: str, out_vertex: str, edge: str):
+	query = f"g.V('{in_vertex}').outE('{edge}').where(inV().has('id', '{out_vertex}')).drop()"
+
+	callback = client.submitAsync(query)
+	if callback.result() is not None:
+		callback.result().all().result()
+	else:
+		print("Something went wrong with this query:\n\t{0}".format(query))
+	print_status_attributes(callback.result())
+
 
 def vertices_count(client, label: str=None) -> int:
 	hasLabel = f".hasLabel('{label}')" if label is not None else ''
@@ -108,3 +118,16 @@ def add_edge(client, vertex_id_a: str, vertex_id_b: str, relation: str, reverse_
 		else:
 			print("Something went wrong with this query:\n\t{0}".format(query))
 		print_status_attributes(callback.result())
+
+
+def get_related_vertices(client, in_vertex: str, out_label: str, relation: str) -> list[str]:
+	'''
+	NOT IMPLEMENTED YET!
+
+	input  => client, 'm238', 'genre', 'is_included_in'\n
+	query  => g.V('m238').out('is_included_in').hasLabel('genre').values('id')\n
+	output => ['g18', 'g80']
+	'''
+
+	query = f"g.V({in_vertex}').out('{relation}').hasLabel('{out_label}').values('id')"
+
