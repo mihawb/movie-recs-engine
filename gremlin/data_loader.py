@@ -5,7 +5,7 @@ from sys import platform
 from os import environ
 
 
-from db_connector import add_vertices_from_dataframe, add_edge, _drop_graph, _drop_vertices_with_label
+from connector import add_vertices_from_dataframe, add_edge, _drop_graph, _drop_vertices_with_label
 
 
 GREMLIN_ENDPOINT = environ['GREMLIN_ENDPOINT']

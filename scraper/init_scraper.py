@@ -19,7 +19,7 @@ PAGES_LIMIT = 500
 STARS_PER_MOVIE = 7
 
 
-def get_genres(save_to_csv: bool=False, out_filename: str='../data/genres_list.csv') -> dict:
+def get_genres(save_to_csv: bool=False, out_filename: str='./data/genres_list.csv') -> dict:
 	'''
 	Get genre list or save in to flat file
 	'''
@@ -32,7 +32,7 @@ def get_genres(save_to_csv: bool=False, out_filename: str='../data/genres_list.c
 	return genres
 
 
-def get_movies(out_filename: str='../data/movies.csv', quiet: bool=False) -> None:
+def get_movies(out_filename: str='./data/movies.csv', quiet: bool=False) -> None:
 	'''
 	Save top rated movies from TMDB to flat file
 	'''
@@ -75,7 +75,7 @@ def get_movies(out_filename: str='../data/movies.csv', quiet: bool=False) -> Non
 	movies_df.to_csv(out_filename, sep=',', index=False)
 
 
-def get_stars(in_filename: str='../data/movies.csv', out_filename: str='../data/casts.csv', quiet: bool=False) -> None:
+def get_stars(in_filename: str='./data/movies.csv', out_filename: str='./data/casts.csv', quiet: bool=False) -> None:
 
 	def get_cast(movie_id: int, accumulator: dict, quiet: bool=False) -> list[int]:
 		params = {'api_key': TMDB_KEY}

@@ -58,7 +58,7 @@ class PlotScraper:
 
         cg = Cinemagoer()
         filename = get_plot_filename(tmdb_id)
-        plot_path = f'../data/plots/{filename}'
+        plot_path = f'./data/plots/{filename}'
 
         # skip if plot already fetched and saved
         if path.isfile(plot_path):
@@ -78,7 +78,7 @@ class PlotScraper:
 
 
 # returns True when all plot files are set up; if not, call this method once again
-def get_plots(in_filename: str = '../data/movies.csv', out_filename: str = '../data/plots.csv',
+def get_plots(in_filename: str = './data/movies.csv', out_filename: str = './data/plots.csv',
               quiet: bool = False) -> bool:
 
     plot_scraper = PlotScraper(quiet)
