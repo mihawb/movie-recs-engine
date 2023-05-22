@@ -1,3 +1,4 @@
+pw\edu\pl\DocumentWritable.class
+pw\edu\pl\CosineSimilarity$TokenizerMapper.class
 pw\edu\pl\CosineSimilarity.class
 pw\edu\pl\CosineSimilarity$CosReducer.class
-pw\edu\pl\CosineSimilarity$TokenizerMapper.class
