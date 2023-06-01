@@ -120,14 +120,83 @@ def add_edge(client, vertex_id_a: str, vertex_id_b: str, relation: str, reverse_
 		print_status_attributes(callback.result())
 
 
-def get_related_vertices(client, in_vertex: str, out_label: str, relation: str) -> list[str]:
+def get_related_movies(client, in_vertex: str, thru_label: str) -> list[str]:
 	'''
-	NOT IMPLEMENTED YET!
+	Returns a list of movies related genre- or cast-wise.\n
+	See `get_similar_movies` for plot-wise similarity.\n
 
-	input  => client, 'm238', 'genre', 'is_included_in'\n
-	query  => g.V('m238').out('is_included_in').hasLabel('genre').values('id')\n
-	output => ['g18', 'g80']
+	Parameters
+	----------
+	`client: gremlin_python.driver.client.Client` -> db connection client
+	`in_vertex: str` -> movie ID
+	`thru_label: str = "genre" | "star"` -> label to aggregate by
+	
+	Returns
+	-------
+	`list[str]` -> list of related movies' ID (duplicates are expected)
+
+	Example
+	-------
+	input  -> `client, 'm238', 'genre', 'is_included_in'`
+	query  -> `g.V('m238').out('is_included_in').hasLabel('genre').values('id')`
+	output -> `['g18', 'g80']`
 	'''
 
-	query = f"g.V({in_vertex}').out('{relation}').hasLabel('{out_label}').values('id')"
+	if thru_label == 'genre':
+		rel = 'is_included_in'	# movie to label
+		rev_rel = 'includes'		# label to movie
+	elif thru_label == 'star':
+		rel = 'stars_in'
+		rev_rel = 'starring'
+	else:
+		raise ValueError('Invalid label name')
 
+	# Azure Cosmos DB fucking SUCKS ASS and I despise it with a burning passion
+	# all this bullshit could've been done so much more cleverly and efficiently
+
+	# i.e. g.V('m238').out('is_included_in').hasLabel('genre').repeat(out('includes')).emit().values('name')
+	# which is ONE SINGLE QUERY
+
+	# if only Azure had full implementation of Gremlin and wouldn't choke on every 
+	# fucking request requiring traversal of more than, like, one fucking node geez
+
+	# TODO: move to Neptune in AWS
+
+	query_template = "g.V('%s').out('%s').hasLabel('%s').values('id')"
+
+	query1 = query_template % (in_vertex, rel, thru_label)
+	callback = client.submitAsync(query1)
+	middle_vertices = callback.result().all().result()
+	print_status_attributes(callback.result())
+
+	result_vertices = []
+	for v_id in middle_vertices:
+		query2 = query_template % (v_id, rev_rel, 'movie')
+		callback = client.submitAsync(query2)
+		result_vertices.extend(callback.result().all().result())
+		print_status_attributes(callback.result())
+
+	return result_vertices
+
+
+def get_similar_movies(client, in_vertex: str) -> list[str]:
+	'''
+	Returns a list of movies related plot-wise by cosine similarity.\n
+	See `get_related_movies` for genre- and cast-wise similarity.\n
+	
+	Parameters
+	----------
+	`client: gremlin_python.driver.client.Client` -> db connection client
+	`in_vertex: str` -> movie ID
+	
+	Returns
+	-------
+	`list[str]` -> list of similar movies' ID
+	'''
+
+	query = f"g.V('{in_vertex}').out('is_similar_to').hasLabel('movie').values('id')"
+	callback = client.submitAsync(query)
+	result_verices = callback.result().all().result()
+	print_status_attributes(callback.result())
+
+	return result_verices
