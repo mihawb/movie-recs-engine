@@ -3,5 +3,6 @@
 data/*
 !data/.gitkeep
 !data/plots/.gitkeep
+!data/load.sh
 *.txt
 .idea
