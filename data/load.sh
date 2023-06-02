@@ -40,7 +40,7 @@ function merge() {
         if [[ -f "$file" ]]; then
             filename=$(basename "$file" "$EXTENSION")
             content=$(cat $file | dos2unix | tr -d '\n')
-            echo "$filename: $content" >> "$OUT_FILE"
+            echo "$filename $content" >> "$OUT_FILE"
         fi
     done
 }
