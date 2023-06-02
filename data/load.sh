@@ -39,9 +39,8 @@ function merge() {
         echo "Processed file [$file]"
         if [[ -f "$file" ]]; then
             filename=$(basename "$file" "$EXTENSION")
-            echo -n "$filename " >> "$OUT_FILE"
-            tr -d '\n' < "$file" >> "$OUT_FILE"
-            echo >> "$OUT_FILE"
+            content=$(cat $file | dos2unix | tr -d '\n')
+            echo "$filename: $content" >> "$OUT_FILE"
         fi
     done
 }
