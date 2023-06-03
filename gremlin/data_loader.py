@@ -3,10 +3,7 @@ import pandas as pd
 import asyncio
 from sys import platform
 from os import environ
-
-
-from connector import add_vertices_from_dataframe, add_edge, _drop_graph, _drop_vertices_with_label, _drop_edge
-from connector import get_related_movies
+from connector import *
 
 
 GREMLIN_ENDPOINT = environ['GREMLIN_ENDPOINT']
@@ -92,7 +89,3 @@ if __name__ == '__main__':
 	# add_m2s_edges(client)
 
 	# _drop_graph(client)
-
-	# res = get_related_movies(client, 'm238', 'genre')
-	# print(len(res), type(res))
-	# print(res[:10])

@@ -81,7 +81,7 @@ def vertices_count(client, label: str=None) -> int:
 			res = -1
 			print("Something went wrong with this query: {0}".format(query))
 	print_status_attributes(callback.result())
-	return res[0] if type(res) == list else res
+	return res[0] if isinstance(res, list) else res
 	
 
 def add_vertices_from_dataframe(client, vertex_type: str, dataframe: pd.DataFrame) -> None:
@@ -200,3 +200,74 @@ def get_similar_movies(client, in_vertex: str) -> list[str]:
 	print_status_attributes(callback.result())
 
 	return result_verices
+
+
+def get_vertex_properties(client, in_vertex: str | list) ->  list[dict]:
+	'''
+	Returns  tuple with all relevant info, including dict with all properties of a given vertex.\n
+	Check `dict.keys` to see what properties are available.\n
+	Function is vectorized, but massive queries may exceed RU limit - exceptions are unhandled.\n
+	
+	Parameters
+	----------
+	`client: gremlin_python.driver.client.Client` -> db connection client
+	`in_vertex: str | list` -> vertex ID or list thereof
+	
+	Returns
+	-------
+	`list(dict)` -> list of one or more dictionaries of given vertex properties
+	'''
+
+	if not isinstance(in_vertex, list):
+		in_vertex = [in_vertex]
+
+	inner_list = "','".join(in_vertex)
+	query = f"g.V('{inner_list}')"
+
+	callback = client.submitAsync(query)
+	result_properties = callback.result().all().result()
+	print_status_attributes(callback.result())
+
+	return [_translate_gremlin_props_to_dict(x) for x in result_properties]
+
+
+def get_random_movies(client, count: int) -> list[dict]:
+	'''
+	Returns a list of `count` movies chosen at random.\n
+	
+	Parameters
+	----------
+	`client: gremlin_python.driver.client.Client` -> db connection client
+	`count: int` -> number of movies to return
+	
+	Returns
+	-------
+	`list[dict]` -> list of dictionaries of movie properties
+	'''
+	query = f"g.V().hasLabel('movie').sample(20000).order().by(shuffle).limit({count})"
+	callback = client.submitAsync(query)
+	result_properties = callback.result().all().result()
+	print_status_attributes(callback.result())
+
+	return [_translate_gremlin_props_to_dict(x) for x in result_properties]
+
+
+def _translate_gremlin_props_to_dict(vertex_obj: dict) -> dict:
+	def _traslate_inner(k):
+		v = vertex_obj['properties'][k][0]['value']
+		if isinstance(v, (int, float)):
+			return v
+		elif isinstance(v, str):
+			if v == 'True':	# worst possible way of doing this but we dont have 
+				return True  	# movies with such titles so it should be safe
+			elif v == 'False':
+				return False
+			elif v[0] == '[':
+				return eval(v)
+			else:
+				return v
+			
+	keys = ['id', 'label'] + list(vertex_obj['properties'].keys())
+	values = [vertex_obj['id'], vertex_obj['label']] + list(map(_traslate_inner, keys[2:]))
+
+	return dict(zip(keys, values))
