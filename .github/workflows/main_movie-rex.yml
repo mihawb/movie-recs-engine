@@ -24,14 +24,15 @@ jobs:
 
       - name: Create and start virtual environment
         run: |
-          cd ./flask-api
+          mkdir todelete
+          mv * todelete/
+          mv todelete/flask-api/* .
+          rm -rf todelete
           python -m venv venv
           source venv/bin/activate
       
       - name: Install dependencies
-        run: |
-          cd ./flask-api
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
       
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v2
