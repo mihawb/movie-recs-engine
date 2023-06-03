@@ -24,10 +24,9 @@ jobs:
 
       - name: Create and start virtual environment
         run: |
-          mkdir todelete
-          mv * todelete/
-          mv todelete/flask-api/* .
-          rm -rf todelete
+          rm -r $(ls -A | grep -v flask-api)
+          mv flask-api/* .
+          rm -r flask-api
           python -m venv venv
           source venv/bin/activate
       
