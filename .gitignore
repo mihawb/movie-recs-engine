@@ -4,4 +4,5 @@ data/*
 !data/.gitkeep
 !data/plots/.gitkeep
 *.txt
+!requirements.txt
 .idea
