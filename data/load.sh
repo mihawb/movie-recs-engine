@@ -3,7 +3,7 @@
 # Skrypt do scalania plików z katalogu i ładowania do Hadoopa
 
 DATA_DIR="plots"
-OUT_FILE="plots_output.txt"
+OUT_FILE="PLOTS_DATA.txt"
 EXTENSION=".txt"
 HADOOP_DIR="plots"
 
@@ -40,6 +40,7 @@ function merge() {
         if [[ -f "$file" ]]; then
             filename=$(basename "$file" "$EXTENSION")
             content=$(cat $file | dos2unix | tr -d '\n')
+            content=$(clear_text "$content")
             echo "$filename $content" >> "$OUT_FILE"
         fi
     done
@@ -49,6 +50,24 @@ function public() {
     hdfs dfs -rm -r $HADOOP_DIR
     hdfs dfs -mkdir $HADOOP_DIR
     hdfs dfs -put "$OUT_FILE" $HADOOP_DIR
+}
+
+function clear_text() {
+    local input=$1
+
+    # Remove punctuation marks
+    input=$(echo "$input" | tr -d '[:punct:]')
+
+    # Upper case -> Lower case
+    input=$(echo "$input" | tr '[:upper:]' '[:lower:]')
+
+    # Remove popular stop words
+    local stopwords=("a" "an" "and" "are" "as" "at" "be" "by" "for" "from" "has" "he" "in" "is" "it" "its" "of" "on" "that" "the" "to" "was" "were" "will" "with")
+    for word in "${stopwords[@]}"; do
+        input=$(echo "$input" | sed "s/\\b${word}\\b//g")
+    done
+
+    echo "$input"
 }
 
 # START
