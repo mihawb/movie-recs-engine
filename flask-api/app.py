@@ -1,11 +1,23 @@
 import os
 from gremlin.connector import *
+from gremlin_python.driver import client, serializer
+import asyncio
+from os import environ
 
 from flask import (Flask, redirect, render_template, request,
                    send_from_directory, url_for)
 
-app = Flask(__name__)
+GREMLIN_ENDPOINT = environ['GREMLIN_ENDPOINT']
+GREMLIN_USERNAME = environ['GREMLIN_USERNAME']
+GREMLIN_PASSWORD = environ['GREMLIN_PASSWORD_RO']
 
+app = Flask(__name__)
+client = client.Client(
+    f'{GREMLIN_ENDPOINT}', 'g',
+    username=GREMLIN_USERNAME,
+    password=GREMLIN_PASSWORD,
+    message_serializer=serializer.GraphSONSerializersV2d0()
+)
 
 @app.route('/')
 def index():
@@ -23,7 +35,8 @@ def hello():
 
    if name:
        print('Request for hello page received with name=%s' % name)
-       return render_template('hello.html', name = name)
+       movie_obj = get_vertex_properties(client, 'm238') # connector used here
+       return render_template('hello.html', name = movie_obj[0]['title'])
    else:
        print('Request for hello page received with no name or blank name -- redirecting')
        return redirect(url_for('index'))
