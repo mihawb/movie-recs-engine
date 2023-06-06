@@ -1,2 +1,5 @@
-Flask==2.0.2
+Flask==2.2.5
 gunicorn
+pandas
+np
+gremlinpython==3.4.13

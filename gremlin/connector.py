@@ -17,13 +17,15 @@ def serializeProp(name, value) -> str:
 	return f'.property("{name}", {value})'
 
 
-def print_status_attributes(result):
+def print_status_attributes(result, quiet=False):
     # IMPORTANT: Make sure to consume ALL results returend by client to the final status
 		# attributes for a request. Gremlin result are stream as a sequence of partial
 		# response messages where the last response contents the complete status attributes set.
-		print("\n")
-		print("\tResponse status_attributes:\n\t{0}".format(result.status_attributes))
-		print("\n")
+		consumed_res = result.status_attributes
+		if not quiet:
+			print("\n")
+			print("\tResponse status_attributes:\n\t{0}".format(consumed_res))
+			print("\n")
 
 
 def _drop_graph(client) -> None: 
@@ -102,22 +104,31 @@ def add_vertices_from_dataframe(client, vertex_type: str, dataframe: pd.DataFram
 		# TODO: add error handling for conflicting vertices (adding one that already exists)
 
 	
-def add_edge(client, vertex_id_a: str, vertex_id_b: str, relation: str, reverse_relation: str=None):
+def add_edge(client, vertex_id_a: str, vertex_id_b: str, 
+	     				relation: str, reverse_relation: str=None,
+							weight: float=None):
+	
+	if weight is not None:
+		weightProp = serializeProp('sim', weight)
+	else:
+		weightProp = ''
+
 	queries = []
 	queries.append(
-		f'g.V("{vertex_id_a}").addE("{relation}").to(g.V("{vertex_id_b}"))'
+		f'g.V("{vertex_id_a}").addE("{relation}"){weightProp}.to(g.V("{vertex_id_b}"))'
 	)
 	if reverse_relation is not None: queries.append(
-		f'g.V("{vertex_id_b}").addE("{reverse_relation}").to(g.V("{vertex_id_a}"))'
+		f'g.V("{vertex_id_b}").addE("{reverse_relation}"){weightProp}.to(g.V("{vertex_id_a}"))'
 	)
 		
 	for query in queries:
 		callback = client.submitAsync(query)
 		if callback.result() is not None:
-			print("\tInserted this edge:\n\t{0}\n".format(callback.result().all().result()))
+			consumed_res = callback.result().all().result()
+			# print("\tInserted this edge:\n\t{0}\n".format(consumed_res))
 		else:
 			print("Something went wrong with this query:\n\t{0}".format(query))
-		print_status_attributes(callback.result())
+		print_status_attributes(callback.result(), quiet=True)
 
 
 def get_related_movies(client, in_vertex: str, thru_label: str) -> list[str]:
@@ -179,7 +190,7 @@ def get_related_movies(client, in_vertex: str, thru_label: str) -> list[str]:
 	return result_vertices
 
 
-def get_similar_movies(client, in_vertex: str) -> list[str]:
+def get_similar_movies(client, in_vertex: str) -> list[tuple[str, float]]:
 	'''
 	Returns a list of movies related plot-wise by cosine similarity.\n
 	See `get_related_movies` for genre- and cast-wise similarity.\n
@@ -191,15 +202,19 @@ def get_similar_movies(client, in_vertex: str) -> list[str]:
 	
 	Returns
 	-------
-	`list[str]` -> list of similar movies' ID
+	`list[tuple[str, float]]` -> list of similar movies' ID and similarity weights
 	'''
+	def _extract_weight(edge_obj: dict) -> tuple[str, float]:
+		m_id = edge_obj['inV']
+		sim = edge_obj['properties']['sim']
+		return m_id, sim
 
-	query = f"g.V('{in_vertex}').out('is_similar_to').hasLabel('movie').values('id')"
+	query = f"g.V('{in_vertex}').outE('is_similar_to')"
 	callback = client.submitAsync(query)
-	result_verices = callback.result().all().result()
+	result_edges = callback.result().all().result()
 	print_status_attributes(callback.result())
 
-	return result_verices
+	return [_extract_weight(e) for e in result_edges]
 
 
 def get_vertex_properties(client, in_vertex: str | list) ->  list[dict]:
