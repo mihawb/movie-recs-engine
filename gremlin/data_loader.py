@@ -4,6 +4,7 @@ import asyncio
 from sys import platform
 from os import environ
 from connector import *
+from time import sleep
 
 
 GREMLIN_ENDPOINT = environ['GREMLIN_ENDPOINT']
@@ -63,6 +64,21 @@ def add_m2s_edges(client):
 			add_edge(client, m_id, s_id, 'starring', 'stars_in')
 
 
+def add_m2m_edges(client):
+	with open('./data/similarity.txt', 'r') as hand:
+		for line in hand:
+			line = line.rstrip()
+
+			dash_idx = line.index('-')
+			colon_idx = line.index(':')
+
+			m_from = 'm' + line[:dash_idx]
+			m_to = 'm' + line[dash_idx+1:colon_idx]
+			sim = float(line[colon_idx+1:])
+
+			if sim > 0.05:
+				add_edge(client, m_from, m_to, 'is_similar_to', 'is_similar_to', sim)
+
 if __name__ == '__main__':
 
 	if platform == 'win32': 
@@ -87,5 +103,6 @@ if __name__ == '__main__':
 
 	# add_m2g_edges(client)
 	# add_m2s_edges(client)
+	# add_m2m_edges(client)
 
 	# _drop_graph(client)

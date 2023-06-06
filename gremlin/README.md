@@ -8,10 +8,17 @@ Prefer read-only keys over read-write ones
 ## Usage examples
 
 ### `get_related_movies`
-`get_similar_movies` works in a similar way
+Returns a list of movies related cast- or genre-wise for further aggregation.
 ```
 >>> get_related_movies(client, 'm238', 'genre')
 ['m238', 'm278', 'm240', 'm19404', 'm424', 'm389', 'm372058', 'm496243', 'm155', 'm497', ...]
+```
+
+### `get_similar_movies`
+Returns a list of plot-wise similar movies and similarity weights for further aggregation.
+```
+>>> get_similar_movies(client, 'm8469')
+[('m127380', 0.217671547579724), ('m15144', 0.1836095755740169)]
 ```
 
 ### `get_vertex_properties` (single value)
