@@ -61,11 +61,20 @@ function clear_text() {
     # Upper case -> Lower case
     input=$(echo "$input" | tr '[:upper:]' '[:lower:]')
 
+    # Remove numbers
+    input=$(echo "$input" | sed 's/[0-9]//g')
+
     # Remove popular stop words
     local stopwords=("a" "an" "and" "are" "as" "at" "be" "by" "for" "from" "has" "he" "in" "is" "it" "its" "of" "on" "that" "the" "to" "was" "were" "will" "with")
     for word in "${stopwords[@]}"; do
         input=$(echo "$input" | sed "s/\\b${word}\\b//g")
     done
+
+    # One space between words
+    input=$(echo "$input" | tr -s ' ')
+
+    # Trim
+    input=$(echo "$input" | xargs)
 
     echo "$input"
 }
