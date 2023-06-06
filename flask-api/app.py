@@ -94,12 +94,21 @@ def api_get_recommendations():
     return jsonify(rex)
 
 
+def _make_human_readable(m_obj: dict) -> dict:
+    tmp = list(m_obj.keys())
+    for key in tmp:
+        if key not in ('title', 'genres', 'id', 'release_date'):
+            m_obj.pop(key)
+    return m_obj
+
+
 @app.route('/api/rexwithinfo', methods=['GET'])
 def api_get_rex_with_info():
     m_ids = request.args.getlist('id')
     rex = _generate_recommendations(m_ids)
     m_obj_list = get_vertex_properties(client, rex)
-    return jsonify(m_obj_list)
+    human_readable = [_make_human_readable(d) for d in m_obj_list]
+    return jsonify(human_readable)
 
 
 if __name__ == '__main__':
