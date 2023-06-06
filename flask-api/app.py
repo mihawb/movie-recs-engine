@@ -42,11 +42,11 @@ def favicon():
 @app.route('/hello', methods=['POST'])
 def hello():
    name = request.form.get('name')
-
+ 
    if name:
        print('Request for hello page received with name=%s' % name)
        movie_obj = get_vertex_properties(client, 'm238') # connector used here
-       return render_template('hello.html', name = movie_obj[0]['title'])
+       return render_template('hello.html', recommendations = movie_obj[0]['title'])
    else:
        print('Request for hello page received with no name or blank name -- redirecting')
        return redirect(url_for('index'))
