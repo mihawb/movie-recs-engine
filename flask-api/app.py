@@ -19,10 +19,12 @@ client = client.Client(
     message_serializer=serializer.GraphSONSerializersV2d0()
 )
 
+random_movies = get_random_movies(client, 5)
+
 @app.route('/')
 def index():
    print('Request for index page received')
-   return render_template('index.html')
+   return render_template('index.html', random_movies = random_movies)
 
 @app.route('/favicon.ico')
 def favicon():
@@ -31,12 +33,12 @@ def favicon():
 
 @app.route('/hello', methods=['POST'])
 def hello():
-   name = request.form.get('name')
-
-   if name:
-       print('Request for hello page received with name=%s' % name)
+   #name = request.form.get('name')
+ 
+   if random_movies:
+       print('Request for hello page received with name=%s' % random_movies)
        movie_obj = get_vertex_properties(client, 'm238') # connector used here
-       return render_template('hello.html', name = movie_obj[0]['title'])
+       return render_template('hello.html', recommendations = movie_obj[0]['title'])
    else:
        print('Request for hello page received with no name or blank name -- redirecting')
        return redirect(url_for('index'))
