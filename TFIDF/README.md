@@ -39,17 +39,14 @@ Phase 3:
   **Hadoop:**
   
     hadoop jar ~/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.3.5.jar -input OutPhaseTwo -output OutPhaseThree -mapper MapperPhaseThree.py -reducer ReducerPhaseThree.py -file MapperPhaseThree.py -file ReducerPhaseThree.py
+    hdfs dfs -copyToLocal OutPhaseThree/part-00000 OutputPhaseThree.txt
 
 Phase 4:
 -------
 
     cd ../PhaseFour
     
-  **Local:**
+  **Local/Hadoop:**
   
     python CalculateSimilarity.py 
 
-  **Hadoop:**
-  
-    hadoop dfs -copyToLocal OutPhaseThree/part-00000 OutputPhaseThree.txt
-    python CalculateSimilarity.py 
