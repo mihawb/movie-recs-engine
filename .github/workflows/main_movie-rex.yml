@@ -24,21 +24,21 @@ jobs:
 
       - name: Create and start virtual environment
         run: |
-          rm -r $(ls -A | grep -v flask-api)
-          mv flask-api/* .
-          rm -r flask-api
+          cd flask-api
           python -m venv venv
           source venv/bin/activate
       
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          cd flask-api
+          pip install -r requirements.txt
       
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v2
         with:
           name: python-app
           path: |
-            . 
+            ./flask-api
             !venv/
 
   deploy:
