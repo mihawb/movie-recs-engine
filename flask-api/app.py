@@ -1,4 +1,5 @@
 import os
+from gremlin.connector import *
 
 from flask import (Flask, redirect, render_template, request,
                    send_from_directory, url_for)
