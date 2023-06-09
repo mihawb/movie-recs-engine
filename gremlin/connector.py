@@ -157,8 +157,8 @@ def get_related_movies(client, in_vertex: str, thru_label: str) -> list[str]:
 		rel = 'is_included_in'	# movie to label
 		rev_rel = 'includes'		# label to movie
 	elif thru_label == 'star':
-		rel = 'stars_in'
-		rev_rel = 'starring'
+		rel = 'starring'
+		rev_rel = 'stars_in'
 	else:
 		raise ValueError('Invalid label name')
 
@@ -187,7 +187,7 @@ def get_related_movies(client, in_vertex: str, thru_label: str) -> list[str]:
 		result_vertices.extend(callback.result().all().result())
 		print_status_attributes(callback.result())
 
-	return result_vertices
+	return list(filter(lambda m: m != in_vertex, result_vertices))
 
 
 def get_similar_movies(client, in_vertex: str) -> list[tuple[str, float]]:
