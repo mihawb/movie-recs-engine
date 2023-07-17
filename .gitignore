@@ -3,6 +3,12 @@
 data/*
 !data/.gitkeep
 !data/plots/.gitkeep
+!data/load.sh
 *.txt
 !requirements.txt
+!TFIDF/Data/*
+!TFIDF/PhaseOne/OutputPhaseOne.txt
+!TFIDF/PhaseFour/Similarity.txt
+!TFIDF/PhaseThree/OutputPhaseThree.txt
+!TFIDF/PhaseTwo/OutputPhaseTwo.txt
 .idea
