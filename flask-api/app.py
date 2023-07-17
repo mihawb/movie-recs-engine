@@ -31,10 +31,10 @@ def _make_human_readable(m_obj: dict) -> dict:
     return m_obj
 
 
-def _generate_recommendations(m_ids: list[str], count: int=10, use_plot_sim: bool=True) -> list[str]:
+def _generate_recommendations(m_ids: list[str], count: int=10, use_plot_sim: bool=True) -> (list[str], dict[str:float]):
     sim_dict = dict()
     PLOT_WEIGHT_INNER = PLOT_WEIGHT if use_plot_sim else 0.0
-    
+
     for m_id in m_ids:
         rgms = get_related_movies(client, m_id, 'genre')
         for m in rgms:
@@ -50,7 +50,7 @@ def _generate_recommendations(m_ids: list[str], count: int=10, use_plot_sim: boo
 
     rex = list(sim_dict.keys())
     rex.sort(key=sim_dict.get, reverse=True)
-    return rex[:count]
+    return rex[:count], sim_dict
 
 
 @app.route('/')
@@ -78,7 +78,7 @@ def api_get_info():
 def api_get_recommendations():
     m_ids = request.args.getlist('id')
     rex_count = request.args.get('count', 10, type=int)
-    rex = _generate_recommendations(m_ids, count=rex_count)
+    rex, _ = _generate_recommendations(m_ids, count=rex_count)
     return jsonify(rex)
 
 
@@ -88,9 +88,9 @@ def api_get_rex_with_info():
     rex_count = request.args.get('count', 10, type=int)
     use_plot = request.args.get('use_plot', default=True, type=lambda x: not (x.lower() == 'false'))
     # type=bool is generally not type-safe (returns True for almost anything)
-
-    rex = _generate_recommendations(m_ids, count=rex_count, use_plot_sim=use_plot)
+    rex, val_dict = _generate_recommendations(m_ids, count=rex_count, use_plot_sim=use_plot)
     m_obj_list = get_vertex_properties(client, rex)
+    m_obj_list.sort(key=lambda x: val_dict[x['id']], reverse=True)
     human_readable = [_make_human_readable(d) for d in m_obj_list]
     return jsonify(human_readable)
 
